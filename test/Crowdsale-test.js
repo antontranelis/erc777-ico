@@ -41,7 +41,6 @@ describe('EIP777 Crowdsale Test', () => {
   after(async () => testrpc.close());
 
   it('should deploy the input token contract', async () => {
-
     inputToken = await ReferenceToken.new(
       web3,
       'Input Token',
@@ -109,7 +108,7 @@ describe('EIP777 Crowdsale Test', () => {
   }).timeout(20000);
 
   it('should mint 10 IN for addr 1', async () => {
-    await inputToken.ownerMint(accounts[1], web3.utils.toWei('10'), '0x', {
+    await inputToken.mint(accounts[1], web3.utils.toWei('10'), '0x', {
       gas: 300000,
       from: accounts[0],
     });

@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 import "../node_modules/giveth-common-contracts/contracts/SafeMath.sol";
-import "../node_modules/eip820/contracts/EIP820.sol";
+import "../node_modules/eip820/contracts/EIP820Implementer.sol";
 import "../node_modules/eip777/contracts/ReferenceToken.sol";
 import "../node_modules/eip777/contracts/ITokenRecipient.sol";
 
@@ -15,7 +15,7 @@ import "../node_modules/eip777/contracts/ITokenRecipient.sol";
  * minted as contributions arrive, note that the crowdsale contract
  * must be owner of the token in order to be able to mint it.
  */
-contract Crowdsale is EIP820 {
+contract Crowdsale is EIP820Implementer {
   using SafeMath for uint256;
 
   // The token being accepted
