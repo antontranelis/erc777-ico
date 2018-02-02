@@ -1,0 +1,61 @@
+{
+  "name": "erc777-ico",
+  "version": "0.0.1",
+  "description": "An ICO-Contract to purchase ERC-777 tokens for ERC-777 token.",
+  "keywords": [
+    "ERC-777",
+    "ICO",
+    "Crowdsale",
+    "Token",
+    "Solidity",
+    "Ethereum"
+  ],
+  "main": "",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "npm run build; mocha --harmony --exit",
+    "sol-compile": "solcpiler -i './contracts/*.sol'",
+    "sol-lint": "node_modules/solhint/solhint.js --formatter stylish contracts/*.sol",
+    "js-lint": "node_modules/eslint/bin/eslint.js test/",
+    "lint": "npm run sol-lint; npm run js-lint",
+    "ci": "npm run lint && npm run test",
+    "build": "npm run clean && npm run sol-compile",
+    "prepare": "npm run build",
+    "clean": "rm -rf ./build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/antontranelis/erc777-ico.git"
+  },
+  "author": "Anton Tranelis",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/antontranelis/erc777-ico/issues"
+  },
+  "homepage": "https://github.com/antontranelis/erc777-ico#readme",
+  "dependencies": {
+    "bignumber.js": "^6.0.0",
+    "chai-as-promised": "^7.1.1",
+    "eip777": "git://github.com/jacquesd/eip777.git",
+    "eip820": "0.0.11",
+    "giveth-common-contracts": "^0.4.0",
+    "jshint-esnext": "^2.7.0-3",
+    "solcpiler": "0.0.12",
+    "web3": "^1.0.0-beta.27"
+  },
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "eslint": "^4.16.0",
+    "eslint-config-standard": "^11.0.0-beta.0",
+    "eslint-plugin-import": "^2.8.0",
+    "eslint-plugin-node": "^5.2.1",
+    "eslint-plugin-promise": "^3.6.0",
+    "eslint-plugin-standard": "^3.0.1",
+    "ethereumjs-testrpc": "git://github.com/jbaylina/testrpc.git",
+    "mocha": "^4.1.0",
+    "solhint": "^1.1.10",
+    "solidity-coverage": "^0.4.8"
+  }
+}
