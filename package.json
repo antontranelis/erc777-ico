@@ -30,7 +30,7 @@
     "url": "git+https://github.com/antontranelis/erc777-ico.git"
   },
   "author": "Anton Tranelis",
-  "license": "MPL-2.0",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/antontranelis/erc777-ico/issues"
   },
