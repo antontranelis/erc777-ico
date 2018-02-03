@@ -67,7 +67,7 @@ contract Crowdsale is EIP820Implementer {
 
   // fallback function can be used to buy tokens
   function () external payable {
-    // what to do here?
+    throw;
   }
 
   function buyTokensForTokens(address beneficiary, uint256 amount) internal {

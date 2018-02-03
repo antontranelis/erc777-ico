@@ -33,6 +33,14 @@ describe('EIP777 Crowdsale Test', () => {
     web3 = new Web3('ws://localhost:8546');
     accounts = await web3.eth.getAccounts();
 
+    web3.extend({
+      methods: [{
+        name: 'increaseTime',
+        call: 'evm_increaseTime',
+        params: 1
+      }]
+    });
+
 
     interfaceImplementationRegistry = await EIP820.deploy(web3, accounts[0]);
     assert.ok(interfaceImplementationRegistry.$address);
@@ -41,6 +49,7 @@ describe('EIP777 Crowdsale Test', () => {
   after(async () => testrpc.close());
 
   it('should deploy the input token contract', async () => {
+
     inputToken = await ReferenceToken.new(
       web3,
       'Input Token',
@@ -68,13 +77,13 @@ describe('EIP777 Crowdsale Test', () => {
   }).timeout(20000);
 
   it('should deploy the crowdsale contract', async () => {
-    var block = await web3.eth.getBlock(await web3.eth.getBlockNumber()); // one second in the future
+    var block = await web3.eth.getBlock(await web3.eth.getBlockNumber());
     const timestamp = block.timestamp;
 
       crowdsale = await Crowdsale.new(
         web3,
-        timestamp + 1, // 1 second in the future
-        timestamp + 4, // expire after 5 seconds
+        timestamp + 10, // 10 seconds in the future
+        timestamp + 3600, // expire after 1 hour
         1000,
         accounts[2],
         inputToken.$address
@@ -86,11 +95,11 @@ describe('EIP777 Crowdsale Test', () => {
     await util.getBlock();
 
     const startTime = await crowdsale.startTime();
-    assert.equal(startTime, timestamp + 1);
+    assert.equal(startTime, timestamp + 10);
     await util.log(`startTime: ${startTime}`);
 
     const endTime = await crowdsale.endTime();
-    assert.equal(endTime, timestamp + 4);
+    assert.equal(endTime, timestamp + 3600);
     await util.log(`endTime: ${endTime}`);
 
     const rate = await crowdsale.rate();
@@ -120,11 +129,103 @@ describe('EIP777 Crowdsale Test', () => {
     await util.assertBalance(accounts[1], 10);
   }).timeout(6000);
 
+  it('should not buy OUT before crowdsale start', async () => {
+    await inputToken.send(crowdsale.$address, web3.utils.toWei('5'), '0x', {
+      gas: 300000,
+      from: accounts[1],
+    }).should.be.rejectedWith('invalid opcode');
+
+    util = require('./util')(web3, inputToken);
+    await util.getBlock();
+
+    var block = await web3.eth.getBlock(await web3.eth.getBlockNumber());
+    const timestamp = Number(block.timestamp);
+    const startTime = Number(await crowdsale.startTime());
+    assert.isBelow(timestamp, startTime);
+
+    await util.assertTotalSupply(10);
+    await util.assertBalance(accounts[1], 10);
+
+    util = require('./util')(web3, outputToken);
+    await util.assertTotalSupply(0);
+    await util.assertBalance(accounts[1], 0);
+  }).timeout(6000);
+
   it('should buy OUT by sending 5 IN to crowdsale contract', async () => {
+    var block = await web3.eth.getBlock(await web3.eth.getBlockNumber());
+    var timestamp = Number(block.timestamp);
+    var startTime = Number(await crowdsale.startTime());
+
+
+
+    web3.increaseTime(10);
+
+
+
     await inputToken.send(crowdsale.$address, web3.utils.toWei('5'), '0x', {
       gas: 300000,
       from: accounts[1],
     });
+
+    util = require('./util')(web3, inputToken);
+    await util.getBlock();
+
+    await util.assertTotalSupply(10);
+    await util.assertBalance(accounts[1], 5);
+
+    util = require('./util')(web3, outputToken);
+    await util.assertTotalSupply(5000);
+    await util.assertBalance(accounts[1], 5000);
+  }).timeout(6000);
+
+  it('should forward 5 IN to crowdsale wallet', async () => {
+
+    util = require('./util')(web3, inputToken);
+    await util.getBlock();
+
+    await util.assertTotalSupply(10);
+    await util.assertBalance(accounts[2], 5);
+
+  }).timeout(6000);
+
+  it('should not buy OUT by sending 5 XYZ to crowdsale contract', async () => {
+    //deploy XYZ token
+    var xyzToken = await ReferenceToken.new(
+      web3,
+      'XYZ Token',
+      'XYZ',
+      1
+    );
+    assert.ok(xyzToken.$address);
+
+    //mint some XYZ
+    await xyzToken.mint(accounts[1], web3.utils.toWei('10'), '0x', {
+      gas: 300000,
+      from: accounts[0],
+    });
+
+    // send XYZ to crowdsale contract
+    await xyzToken.send(crowdsale.$address, web3.utils.toWei('5'), '0x', {
+      gas: 300000,
+      from: accounts[1],
+    }).should.be.rejectedWith('invalid opcode');
+
+    util = require('./util')(web3, xyzToken);
+    await util.getBlock();
+
+    await util.assertTotalSupply(10);
+    await util.assertBalance(accounts[1], 10);
+
+    util = require('./util')(web3, outputToken);
+    await util.assertTotalSupply(5000);
+    await util.assertBalance(accounts[1], 5000);
+  }).timeout(6000);
+
+  it('should not buy OUT by sending 0 IN to crowdsale contract', async () => {
+    await inputToken.send(crowdsale.$address, web3.utils.toWei('0'), '0x', {
+      gas: 300000,
+      from: accounts[1],
+    }).should.be.rejectedWith('invalid opcode');
 
     util = require('./util')(web3, inputToken);
     await util.getBlock();
@@ -137,20 +238,55 @@ describe('EIP777 Crowdsale Test', () => {
     await util.assertTotalSupply(5000);
     await util.assertBalance(accounts[1], 5000);
   }).timeout(6000);
-/*
-  it('should not buy OUT after crowdsale expired', async () => {
 
-    var crowdsaleExpired = await crowdsale.hasEnded();
-    while (!crowdsaleExpired) {
-      await util.getBlock;
-      crowdsaleExpired = await crowdsale.hasEnded();
-      console.log(crowdsaleExpired);
-    }
-
-    await inputToken.send(crowdsale.$address, web3.utils.toWei('5'), '0x', {
+  it('should not buy OUT by sending -5 IN to crowdsale contract', async () => {
+    await inputToken.send(crowdsale.$address, web3.utils.toWei('-5'), '0x', {
       gas: 300000,
       from: accounts[1],
-    });
+    }).should.be.rejectedWith('invalid opcode');
+
+    util = require('./util')(web3, inputToken);
+    await util.getBlock();
+
+    await util.assertTotalSupply(10);
+    await util.assertBalance(accounts[1], 5);
+    await util.assertBalance(accounts[2], 5);
+
+    util = require('./util')(web3, outputToken);
+    await util.assertTotalSupply(5000);
+    await util.assertBalance(accounts[1], 5000);
+  }).timeout(6000);
+
+  it('should not buy OUT by sending Ether to crowdsale contract', async () => {
+    await web3.eth.sendTransaction({from: accounts[1], to: crowdsale.$address, value: web3.utils.toWei('5')}).should.be.rejectedWith('invalid opcode');
+
+    util = require('./util')(web3, inputToken);
+    await util.getBlock();
+
+    await util.assertTotalSupply(10);
+    await util.assertBalance(accounts[1], 5);
+    await util.assertBalance(accounts[2], 5);
+
+    util = require('./util')(web3, outputToken);
+    await util.assertTotalSupply(5000);
+    await util.assertBalance(accounts[1], 5000);
+
+    contractEther = await web3.eth.getBalance(crowdsale.$address);
+    assert.equal(contractEther, 0);
+
+  }).timeout(6000);
+
+
+  it('should not buy OUT after crowdsale expired', async () => {
+
+    web3.increaseTime(3600);
+
+
+    await inputToken.send(crowdsale.$address, web3.utils.toWei('0.01'), '0x', {
+      gas: 300000,
+      from: accounts[1],
+    }).should.be.rejectedWith('invalid opcode');
+
 
     util = require('./util')(web3, inputToken);
     await util.getBlock();
@@ -163,6 +299,6 @@ describe('EIP777 Crowdsale Test', () => {
     await util.assertTotalSupply(5000);
     await util.assertBalance(accounts[1], 5000);
   }).timeout(10000);
-*/
+
 
 });
